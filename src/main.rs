@@ -23,7 +23,17 @@ async fn main() -> Result<(), Error> {
     let request_url = "https://api.github.com/notifications";
     let token = match env::var("GH_NOTIFIER_TOKEN") {
         Ok(t) => t,
-        Err(e) => panic!("`GH_NOTIFIER_TOKEN` {}", e)
+        Err(e) => {
+            let error = format!("`GH_NOTIFIER_TOKEN` {}", e);
+            let notification_str = format!(
+            "-title \"Github Notifier\" \
+            -subtitle \"error\" -message \"{}\" \
+            -sound Glass",
+            &error,
+        );
+            notify(&notification_str);
+            panic!("{}", error)
+        }
     };
     let response = client.get(request_url)
         .header(USER_AGENT, "Rust Reqwest")
