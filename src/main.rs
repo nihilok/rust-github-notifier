@@ -1,9 +1,8 @@
-use std::env;
+use std::{env, process};
 use std::process::Command;
 use serde::Deserialize;
 use reqwest::{Client, Error};
 use reqwest::header::{AUTHORIZATION, ACCEPT, USER_AGENT};
-
 
 #[derive(Deserialize, Debug)]
 struct NotificationSubject {
@@ -21,13 +20,14 @@ struct Notification {
 async fn main() -> Result<(), Error> {
     let client = Client::new();
     let request_url = "https://api.github.com/notifications";
-    let token = match env::var("GH_NOTIFIER_TOKEN") {
+    let env_var_name = "GH_NOTIFIER_TOKEN";
+    let token = match env::var(env_var_name) {
         Ok(t) => t,
         Err(e) => {
-            let prefix = "`GH_NOTIFIER_TOKEN`";
-            let error_text = format!("{} {}", prefix, e);
+            let error_text = format!("{} {}", env_var_name, e);
             error(&error_text).await;
-            panic!("{}", error_text);
+            println!("{}", error_text);
+            process::exit(1);
         }
     };
     let response = match client.get(request_url)
@@ -38,13 +38,15 @@ async fn main() -> Result<(), Error> {
         Ok(r) => r,
         Err(e) => {
             connection_error(&format!("{e}")).await;
-            panic!("{}", e);
+            println!("{}", e);
+            process::exit(1);
         }
     };
     let status = response.status();
     if status != 200 {
         connection_error(&format!("{status}")).await;
-        panic!("{}", status);
+        println!("Error connecting to GitHub API: {}", status);
+        process::exit(1);
     };
     let response_json: Vec<Notification> = response.json().await?;
     for notification in &response_json {
@@ -59,7 +61,8 @@ async fn main() -> Result<(), Error> {
             vec[vec.len() - 3],
             vec[vec.len() - 1]
         );
-        let reason = &reason.split("_")
+        let reason = &reason
+            .split("_")
             .collect::<Vec<&str>>().join(" ");
         let notification_str = format!(
             "-title \"New Github Notification\" \
