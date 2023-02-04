@@ -11,6 +11,8 @@ struct NotificationSubject {
     url: String,
 }
 
+// remove this comment
+
 #[derive(Deserialize, Debug)]
 struct Notification {
     subject: NotificationSubject,
