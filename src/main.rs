@@ -24,15 +24,15 @@ async fn main() -> Result<(), Error> {
     let token = match env::var("GH_NOTIFIER_TOKEN") {
         Ok(t) => t,
         Err(e) => {
-            let error = format!("`GH_NOTIFIER_TOKEN` {}", e);
+            let error_text = format!("`GH_NOTIFIER_TOKEN` {}", e);
             let notification_str = format!(
-            "-title \"Github Notifier\" \
-            -subtitle \"error\" -message \"{}\" \
-            -sound Glass",
-            &error,
-        );
+                "-title \"Github Notifier\" \
+                -subtitle \"error\" -message \"{}\" \
+                -sound Pop",
+                &error_text,
+            );
             notify(&notification_str);
-            panic!("{}", error)
+            panic!("{}", error_text)
         }
     };
     let response = client.get(request_url)
@@ -45,7 +45,7 @@ async fn main() -> Result<(), Error> {
         let notification_str = format!(
             "-title \"Github Notifier\" \
             -subtitle \"failure\" -message \"{}\" \
-            -sound Glass",
+            -sound Pop",
             &error_text,
         );
         notify(&notification_str);
@@ -81,8 +81,8 @@ async fn main() -> Result<(), Error> {
 
 fn notify(notification_str: &str) {
     Command::new("sh")
-            .arg("-c")
-            .arg(format!("terminal-notifier {notification_str}"))
-            .output()
-            .expect("failed to execute terminal-notifier process");
+        .arg("-c")
+        .arg(format!("terminal-notifier {notification_str}"))
+        .output()
+        .expect("failed to execute terminal-notifier process");
 }
