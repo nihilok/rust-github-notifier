@@ -6,14 +6,14 @@ use reqwest::header::{AUTHORIZATION, ACCEPT, USER_AGENT};
 
 
 #[derive(Deserialize, Debug)]
-struct PR {
+struct NotificationSubject {
     title: String,
     url: String,
 }
 
 #[derive(Deserialize, Debug)]
 struct Notification {
-    subject: PR,
+    subject: NotificationSubject,
     reason: String,
 }
 
