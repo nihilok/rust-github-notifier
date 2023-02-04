@@ -31,7 +31,15 @@ async fn main() -> Result<(), Error> {
         .header(ACCEPT, "application/vnd.github+json")
         .send().await?;
     if response.status() != 200 {
-        panic!("Error connecting to GitHub API: {}", response.status())
+        let error_text = format!("Error connecting to GitHub API: {}", response.status());
+        let notification_str = format!(
+            "-title \"Github Notifier\" \
+            -subtitle \"failure\" -message \"{}\" \
+            -sound Glass",
+            &error_text,
+        );
+        notify(&notification_str);
+        panic!("{}", &error_text);
     };
     let response_json: Vec<Notification> = response.json().await?;
     for notification in &response_json {
@@ -48,18 +56,23 @@ async fn main() -> Result<(), Error> {
         );
         let reason = &reason.split("_")
             .collect::<Vec<&str>>().join(" ");
-        let notify_command = format!(
-            "terminal-notifier -title \"New Github Notification\" \
-            -subtitle \"{}\" -message \"{}\" -open {} -sound Glass",
+        let notification_str = format!(
+            "-title \"New Github Notification\" \
+            -subtitle \"{}\" -message \"{}\" -open {} \
+            -sound Glass",
             reason,
             title,
             pull_url
         );
-        Command::new("sh")
-            .arg("-c")
-            .arg(&notify_command)
-            .output()
-            .expect("failed to execute terminal-notifier process");
+        notify(&notification_str);
     }
     Ok(())
+}
+
+fn notify(notification_str: &str) {
+    Command::new("sh")
+            .arg("-c")
+            .arg(format!("terminal-notifier {notification_str}"))
+            .output()
+            .expect("failed to execute terminal-notifier process");
 }
