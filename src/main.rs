@@ -24,32 +24,27 @@ async fn main() -> Result<(), Error> {
     let token = match env::var("GH_NOTIFIER_TOKEN") {
         Ok(t) => t,
         Err(e) => {
-            let error_text = format!("`GH_NOTIFIER_TOKEN` {}", e);
-            let notification_str = format!(
-                "-title \"Github Notifier\" \
-                -subtitle \"error\" -message \"{}\" \
-                -sound Pop",
-                &error_text,
-            );
-            notify(&notification_str);
-            panic!("{}", error_text)
+            let prefix = "`GH_NOTIFIER_TOKEN`";
+            let error_text = format!("{} {}", prefix, e);
+            error(&error_text).await;
+            panic!("{}", error_text);
         }
     };
-    let response = client.get(request_url)
+    let response = match client.get(request_url)
         .header(USER_AGENT, "Rust Reqwest")
         .header(AUTHORIZATION, format!("Bearer {token}"))
         .header(ACCEPT, "application/vnd.github+json")
-        .send().await?;
-    if response.status() != 200 {
-        let error_text = format!("Error connecting to GitHub API: {}", response.status());
-        let notification_str = format!(
-            "-title \"Github Notifier\" \
-            -subtitle \"failure\" -message \"{}\" \
-            -sound Pop",
-            &error_text,
-        );
-        notify(&notification_str);
-        panic!("{}", &error_text);
+        .send().await {
+        Ok(r) => r,
+        Err(e) => {
+            connection_error(&format!("{e}")).await;
+            panic!("{}", e);
+        }
+    };
+    let status = response.status();
+    if status != 200 {
+        connection_error(&format!("{status}")).await;
+        panic!("{}", status);
     };
     let response_json: Vec<Notification> = response.json().await?;
     for notification in &response_json {
@@ -74,15 +69,30 @@ async fn main() -> Result<(), Error> {
             title,
             pull_url
         );
-        notify(&notification_str);
+        notify(&notification_str).await;
     }
     Ok(())
 }
 
-fn notify(notification_str: &str) {
+async fn notify(notification_str: &str) {
     Command::new("sh")
         .arg("-c")
         .arg(format!("terminal-notifier {notification_str}"))
         .output()
         .expect("failed to execute terminal-notifier process");
+}
+
+async fn error(error: &str) {
+    let notification_str = format!(
+        "-title \"Github Notifier\" \
+        -subtitle \"error\" -message \"{}\" \
+        -sound Pop",
+        error,
+    );
+    notify(&notification_str).await;
+}
+
+async fn connection_error(detail: &str) {
+    let error_text = format!("Error connecting to GitHub API: {}", detail);
+    error(&error_text).await;
 }
