@@ -11,7 +11,7 @@
             <key>PATH</key>
             <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin</string>
             <key>GH_NOTIFIER_TOKEN</key>
-            <string>*****INSERT TOKEN HERE*****</string>  // <- INSERT TOKEN
+            <string>*****INSERT TOKEN HERE*****</string>
         </dict>
         <key>RunAtLoad</key>
         <true/>

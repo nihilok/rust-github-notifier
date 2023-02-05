@@ -1,7 +1,7 @@
-use std::{env, process, thread, time};
+use std::{env, process};
 use std::process::Command;
 use serde::Deserialize;
-use reqwest::{Client, Error, Response};
+use reqwest::{Client, Error};
 use reqwest::header::{AUTHORIZATION, ACCEPT, USER_AGENT};
 // use serde_json::Value;
 
@@ -19,60 +19,55 @@ struct Notification {
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    println!("gh-notifier is running");
     let request_url = "https://api.github.com/notifications";
-        let env_var_name = "GH_NOTIFIER_TOKEN";
-        let token = match env::var(env_var_name) {
-            Ok(t) => t,
-            Err(e) => {
-                let error_text = format!("{} {}", env_var_name, e);
-                error(&error_text).await;
-                println!("{}", error_text);
-                process::exit(1);
-            }
-        };
-    let client = Client::new();
-    let sleep_duration = time::Duration::from_secs(60);
-
-    loop {
-        let response = match client.get(request_url)
-            .header(USER_AGENT, "Rust Reqwest")
-            .header(AUTHORIZATION, format!("Bearer {token}"))
-            .header(ACCEPT, "application/vnd.github+json")
-            .send().await {
-            Ok(r) => r,
-            Err(e) => {
-                connection_error(&format!("{e}")).await;
-                println!("{}", e);
-                process::exit(1);
-            }
-        };
-        let status = response.status();
-        if status != 200 {
-            connection_error(&format!("{status}")).await;
-            println!("Error connecting to GitHub API: {}", status);
+    let env_var_name = "GH_NOTIFIER_TOKEN";
+    let token = match env::var(env_var_name) {
+        Ok(t) => t,
+        Err(e) => {
+            let error_text = format!("{} {}", env_var_name, e);
+            error(&error_text).await;
+            println!("{}", error_text);
             process::exit(1);
-        };
-        let response_json: Vec<Notification> = response.json().await?;
-        for notification in &response_json {
-            let title = &notification.subject.title;
-            let reason = &notification.reason;
-            let url = &notification.subject.url;
-            let split_url = url.split("/");
-            let vec = split_url.collect::<Vec<&str>>();
-            let pull_url = format!(
-                "https://github.com/{}/{}/pull/{}",
-                vec[vec.len() - 4],
-                vec[vec.len() - 3],
-                vec[vec.len() - 1]
-            );
-            let reason = &reason
-                .split("_")
-                .collect::<Vec<&str>>().join(" ");
-            notify("New Github Notification", reason, title, "Glass", &pull_url).await;
         }
-        thread::sleep(sleep_duration);
+    };
+    let client = Client::new();
+    let response = match client.get(request_url)
+        .header(USER_AGENT, "Rust Reqwest")
+        .header(AUTHORIZATION, format!("Bearer {token}"))
+        .header(ACCEPT, "application/vnd.github+json")
+        .send().await {
+        Ok(r) => r,
+        Err(e) => {
+            connection_error(&format!("{e}")).await;
+            println!("{}", e);
+            process::exit(1);
+        }
+    };
+    let status = response.status();
+    if status != 200 {
+        connection_error(&format!("{status}")).await;
+        println!("Error connecting to GitHub API: {}", status);
+        process::exit(1);
+    };
+    let response_json: Vec<Notification> = response.json().await?;
+    for notification in &response_json {
+        let title = &notification.subject.title;
+        let reason = &notification.reason;
+        let url = &notification.subject.url;
+        let split_url = url.split("/");
+        let vec = split_url.collect::<Vec<&str>>();
+        let pull_url = format!(
+            "https://github.com/{}/{}/pull/{}",
+            vec[vec.len() - 4],
+            vec[vec.len() - 3],
+            vec[vec.len() - 1]
+        );
+        let reason = &reason
+            .split("_")
+            .collect::<Vec<&str>>().join(" ");
+        notify("New Github Notification", reason, title, "Glass", &pull_url).await;
     }
+    Ok(())
 }
 
 async fn notify(title: &str, subtitle: &str, message: &str, sound: &str, open: &str) {
