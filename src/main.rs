@@ -5,7 +5,6 @@ use std::process::{Command, Output};
 use serde::Deserialize;
 use reqwest::{Client, Error};
 use reqwest::header::{AUTHORIZATION, ACCEPT, USER_AGENT};
-// use serde_json::Value;
 
 #[derive(Deserialize, Debug)]
 struct NotificationSubject {
@@ -65,26 +64,33 @@ async fn main() -> Result<(), Error> {
     let mut new_ids: Vec<&str> = Vec::new();
     for notification in &response_json {
         new_ids.push(&notification.id);
-        if !read_id_strs.contains(&&**&notification.id) {
-            let title = &notification.subject.title;
-            let reason = &notification.reason;
-            let url = &notification.subject.url;
-            let split_url = url.split("/");
-            let vec = split_url.collect::<Vec<&str>>();
-            let pull_url = format!(
-                "https://github.com/{}/{}/pull/{}",
-                vec[vec.len() - 4],
-                vec[vec.len() - 3],
-                vec[vec.len() - 1]
-            );
-            let reason = &reason
-                .split("_")
-                .collect::<Vec<&str>>().join(" ");
-            notify("New Github Notification", reason, title, "Glass", &pull_url).await;
+        if read_id_strs.contains(&&**&notification.id) {
+            continue;
         }
+        let title = &notification.subject.title;
+        let reason = &notification.reason;
+        let url = &notification.subject.url;
+        let split_url = url.split("/");
+        let vec = split_url.collect::<Vec<&str>>();
+        let pull_url = format!(
+            "https://github.com/{}/{}/pull/{}",
+            vec[vec.len() - 4],
+            vec[vec.len() - 3],
+            vec[vec.len() - 1]
+        );
+        let reason = &reason
+            .split("_")
+            .collect::<Vec<&str>>().join(" ");
+        notify(
+            "New Github Notification",
+            reason,
+            title,
+            "Glass",
+            &pull_url
+        ).await;
     }
     if new_ids.len() > 1 {
-        let ids_to_write: String = new_ids.iter().map( |&id| id.to_string() + ",").collect();
+        let ids_to_write: String = new_ids.iter().map(|&id| id.to_string() + ",").collect();
         fs::write(&ids_file_path, ids_to_write).expect("Unable to write ids to file");
     }
     if new_ids.len() == 1 {
@@ -104,7 +110,13 @@ async fn notify(title: &str, subtitle: &str, message: &str, sound: &str, open: &
             .output()
             .expect("failed to execute notify-send process");
     } else {
-        let notification_str = format!("-title \"{title}\" -subtitle \"{subtitle}\" -message \"{message}\" -sound \"{sound}\" -open \"{open}\"");
+        let notification_str = format!(
+            "-title \"{title}\" \
+            -subtitle \"{subtitle}\" \
+            -message \"{message}\" \
+            -sound \"{sound}\" \
+            -open \"{open}\""
+        );
         command = Command::new("sh")
             .arg("-c")
             .arg(format!("terminal-notifier {notification_str}"))
@@ -125,7 +137,7 @@ async fn error(error: &str) {
         "error",
         error,
         "Pop",
-        ""
+        "",
     ).await
 }
 
