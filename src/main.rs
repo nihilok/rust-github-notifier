@@ -17,6 +17,7 @@ struct Notification {
     id: String,
     subject: NotificationSubject,
     reason: String,
+    updated_at: String,
 }
 
 const REQUEST_URL: &str = "https://api.github.com/notifications";
@@ -61,10 +62,13 @@ async fn main() -> Result<(), Error> {
     }
     let read_ids_str = fs::read_to_string(&ids_file_path).expect("could not read ids from file");
     let read_id_strs = read_ids_str.split(",").collect::<Vec<&str>>();
-    let mut new_ids: Vec<&str> = Vec::new();
+    let mut new_ids: Vec<String> = Vec::new();
     for notification in &response_json {
-        new_ids.push(&notification.id);
-        if read_id_strs.contains(&&**&notification.id) {
+        let mut identifier: String = notification.id.to_owned();
+        identifier.push_str(&notification.updated_at);
+        let check = identifier.as_str().to_owned();
+        new_ids.push(identifier);
+        if read_id_strs.contains(&&**&check) {
             continue;
         }
         let title = &notification.subject.title;
@@ -90,11 +94,11 @@ async fn main() -> Result<(), Error> {
         ).await;
     }
     if new_ids.len() > 1 {
-        let ids_to_write: String = new_ids.iter().map(|&id| id.to_string() + ",").collect();
+        let ids_to_write: String = new_ids.iter().map(|id| id.to_string() + ",").collect();
         fs::write(&ids_file_path, ids_to_write).expect("Unable to write ids to file");
     }
     if new_ids.len() == 1 {
-        fs::write(&ids_file_path, new_ids[0]).expect("Unable to write ids to file");
+        fs::write(&ids_file_path, &new_ids[0]).expect("Unable to write ids to file");
     }
     Ok(())
 }
