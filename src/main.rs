@@ -89,6 +89,7 @@ async fn notify(title: &str, subtitle: &str, message: &str, sound: &str, open: &
     }
 }
 
+
 async fn error(error: &str) {
     notify("GitHub Notifier", "error", error, "Pop", "").await;
 }
