@@ -25,6 +25,7 @@ const ENV_VAR_NAME: &str = "GH_NOTIFIER_TOKEN";
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
+    // get token from environment variable
     let token = match env::var(ENV_VAR_NAME) {
         Ok(t) => t,
         Err(e) => {
@@ -34,6 +35,8 @@ async fn main() -> Result<(), Error> {
             process::exit(1);
         }
     };
+
+    // make request to GH notifications API
     let client = Client::new();
     let response = match client.get(REQUEST_URL)
         .header(USER_AGENT, "Rust Reqwest")
@@ -53,36 +56,49 @@ async fn main() -> Result<(), Error> {
         println!("Error connecting to GitHub API: {}", status);
         process::exit(1);
     };
-    let response_json: Vec<Notification> = response.json().await?;
+
+    // handle local persistence file
     let mut ids_file_path = env::var("HOME").expect("$HOME environment variable is not set");
     let ids_filename = "/.gh-read-notification-ids";
     ids_file_path.push_str(ids_filename);
     if !Path::new(&ids_file_path).exists() {
         File::create(&ids_file_path).expect("creating persistent ids file failed");
     }
+
+    // read already notified ids from file
     let read_ids_str = fs::read_to_string(&ids_file_path).expect("could not read ids from file");
     let read_id_strs = read_ids_str.split(",").collect::<Vec<&str>>();
     let mut new_ids: Vec<String> = Vec::new();
+
+    // handle successful API response
+    let response_json: Vec<Notification> = response.json().await?;
+
     for notification in &response_json {
         let mut identifier: String = notification.id.to_owned();
         identifier.push_str(&notification.updated_at);
         let check = identifier.clone();
         new_ids.push(identifier);
         if read_id_strs.contains(&check.as_str()) {
+            // have already notified about this notification
             continue;
         }
+
+        // build notification
         let title = &notification.subject.title;
         let reason = &notification.reason;
         let url = &notification.subject.url;
-        let vec = url.split("/").collect::<Vec<&str>>();
+        let url_parts = url.split("/").collect::<Vec<&str>>();
+        let len_url_parts = url_parts.len();
         let pull_url = format!(
             "https://github.com/{}/{}/pull/{}",
-            vec[vec.len() - 4],
-            vec[vec.len() - 3],
-            vec[vec.len() - 1]
+            url_parts[len_url_parts - 4],
+            url_parts[len_url_parts - 3],
+            url_parts[len_url_parts - 1]
         );
         let reason = &reason
             .split("_").collect::<Vec<&str>>().join(" ");
+
+        // send notification
         notify(
             "New Github Notification",
             reason,
@@ -91,6 +107,8 @@ async fn main() -> Result<(), Error> {
             &pull_url
         ).await;
     }
+
+    // save notified IDs to persistence file
     if new_ids.len() > 1 {
         let ids_to_write: String = new_ids.iter().map(|id| id.to_string() + ",").collect();
         fs::write(&ids_file_path, ids_to_write).expect("Unable to write ids to file");
@@ -112,6 +130,7 @@ async fn notify(title: &str, subtitle: &str, message: &str, sound: &str, open: &
             .output()
             .expect("failed to execute notify-send process");
     } else {
+        // build MacOS terminal-notifier command line
         let mut notification_str = format!(
             "-title \"{title}\" \
             -subtitle \"{subtitle}\" \
