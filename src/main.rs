@@ -66,16 +66,15 @@ async fn main() -> Result<(), Error> {
     for notification in &response_json {
         let mut identifier: String = notification.id.to_owned();
         identifier.push_str(&notification.updated_at);
-        let check = identifier.as_str().to_owned();
+        let check = identifier.clone();
         new_ids.push(identifier);
-        if read_id_strs.contains(&&**&check) {
+        if read_id_strs.contains(&check.as_str()) {
             continue;
         }
         let title = &notification.subject.title;
         let reason = &notification.reason;
         let url = &notification.subject.url;
-        let split_url = url.split("/");
-        let vec = split_url.collect::<Vec<&str>>();
+        let vec = url.split("/").collect::<Vec<&str>>();
         let pull_url = format!(
             "https://github.com/{}/{}/pull/{}",
             vec[vec.len() - 4],
@@ -83,8 +82,7 @@ async fn main() -> Result<(), Error> {
             vec[vec.len() - 1]
         );
         let reason = &reason
-            .split("_")
-            .collect::<Vec<&str>>().join(" ");
+            .split("_").collect::<Vec<&str>>().join(" ");
         notify(
             "New Github Notification",
             reason,
@@ -114,13 +112,15 @@ async fn notify(title: &str, subtitle: &str, message: &str, sound: &str, open: &
             .output()
             .expect("failed to execute notify-send process");
     } else {
-        let notification_str = format!(
+        let mut notification_str = format!(
             "-title \"{title}\" \
             -subtitle \"{subtitle}\" \
             -message \"{message}\" \
-            -sound \"{sound}\" \
-            -open \"{open}\""
+            -sound \"{sound}\""
         );
+        if open.len() > 0 {
+            notification_str = format!("{notification_str} -open \"{open}\"")
+        }
         command = Command::new("sh")
             .arg("-c")
             .arg(format!("terminal-notifier {notification_str}"))
@@ -130,7 +130,7 @@ async fn notify(title: &str, subtitle: &str, message: &str, sound: &str, open: &
     let err = command.stderr;
     if err.len() > 0 {
         let err_disp = String::from_utf8(err)
-            .expect("Could not decode error message (notify shell command) line 92");
+            .expect("Could not decode error message (notify shell command) line 135");
         panic!("{}", err_disp)
     }
 }
