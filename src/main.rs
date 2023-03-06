@@ -9,7 +9,7 @@ use reqwest::header::{AUTHORIZATION, ACCEPT, USER_AGENT};
 #[derive(Deserialize, Debug)]
 struct NotificationSubject {
     title: String,
-    url: String,
+    url: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -87,14 +87,19 @@ async fn main() -> Result<(), Error> {
         let title = &notification.subject.title;
         let reason = &notification.reason;
         let url = &notification.subject.url;
-        let url_parts = url.split("/").collect::<Vec<&str>>();
-        let len_url_parts = url_parts.len();
-        let pull_url = format!(
-            "https://github.com/{}/{}/pull/{}",
-            url_parts[len_url_parts - 4],
-            url_parts[len_url_parts - 3],
-            url_parts[len_url_parts - 1]
-        );
+        let pull_url = match url {
+            Some(ref url) => {
+                let url_parts = url.split("/").collect::<Vec<&str>>();
+                let len_url_parts = url_parts.len();
+                format!(
+                    "https://github.com/{}/{}/pull/{}",
+                    url_parts[len_url_parts - 4],
+                    url_parts[len_url_parts - 3],
+                    url_parts[len_url_parts - 1]
+                )
+            }
+            None => String::from("")
+        };
         let reason = &reason
             .split("_").collect::<Vec<&str>>().join(" ");
 
@@ -104,7 +109,7 @@ async fn main() -> Result<(), Error> {
             reason,
             title,
             "Glass",
-            &pull_url
+            &pull_url,
         ).await;
     }
 
