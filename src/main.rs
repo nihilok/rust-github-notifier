@@ -94,7 +94,7 @@ async fn main() -> Result<(), Error> {
             continue;
         }
 
-        // build notification
+        // build notification parts
         let title = &notification.subject.title;
         let url = &notification.subject.url;
         let pull_url: Option<String> = match url {
