@@ -45,7 +45,6 @@ async fn main() -> Result<(), Error> {
     // get or create local persistence file to save notification ids already shown
     let ids_file_path = get_persistence_file_path();
 
-
     // make request to GH notifications API
     let client = Client::new();
     let response = match client.get(REQUEST_URL)
