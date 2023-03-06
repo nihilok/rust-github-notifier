@@ -131,12 +131,12 @@ async fn main() -> Result<(), Error> {
     }
 
     // save notified IDs to persistence file
-    if new_ids.len() > 1 {
+    let ids_len = new_ids.len();
+    if ids_len == 1 {
+        fs::write(&ids_file_path, &new_ids[0]).expect("Unable to write ids to file");
+    } else if ids_len > 1 {
         let ids_to_write: String = new_ids.iter().map(|id| id.to_string() + ",").collect();
         fs::write(&ids_file_path, ids_to_write).expect("Unable to write ids to file");
-    }
-    if new_ids.len() == 1 {
-        fs::write(&ids_file_path, &new_ids[0]).expect("Unable to write ids to file");
     }
     Ok(())
 }
