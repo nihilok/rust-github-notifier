@@ -133,10 +133,14 @@ async fn main() -> Result<(), Error> {
     // save notified IDs to persistence file
     let ids_len = new_ids.len();
     if ids_len == 1 {
-        fs::write(&ids_file_path, &new_ids[0]).expect("Unable to write ids to file");
+        fs::write(&ids_file_path, &new_ids[0])
+            .expect("Unable to write ids to file");
     } else if ids_len > 1 {
-        let ids_to_write: String = new_ids.iter().map(|id| id.to_string() + ",").collect();
-        fs::write(&ids_file_path, ids_to_write).expect("Unable to write ids to file");
+        let ids_to_write: String = new_ids.iter()
+            .map(|id| id.to_string() + ",")
+            .collect();
+        fs::write(&ids_file_path, ids_to_write)
+            .expect("Unable to write ids to file");
     }
     Ok(())
 }
@@ -181,11 +185,13 @@ fn display_error(command: Output) {
 }
 
 fn get_persistence_file_path() -> String {
-    let mut ids_file_path = env::var("HOME").expect("$HOME environment variable is not set");
+    let mut ids_file_path = env::var("HOME")
+        .expect("$HOME environment variable is not set");
     let ids_filename = "/.gh-read-notification-ids";
     ids_file_path.push_str(ids_filename);
     if !Path::new(&ids_file_path).exists() {
-        File::create(&ids_file_path).expect("creating persistent ids file failed");
+        File::create(&ids_file_path)
+            .expect("creating persistent ids file failed");
     }
     ids_file_path
 }
@@ -261,4 +267,3 @@ fn start_service() {
         .expect("failed to load launch agent");
     display_error(command);
 }
-
