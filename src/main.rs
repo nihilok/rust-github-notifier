@@ -119,7 +119,7 @@ async fn main() -> Result<(), Error> {
             None => "",
         };
 
-        // send notification
+        // display notification
         notify(
             "New Github Notification",
             reason,
