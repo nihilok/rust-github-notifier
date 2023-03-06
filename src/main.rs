@@ -208,11 +208,14 @@ async fn notify(title: &str, subtitle: &str, message: &str, sound: &str, open: &
             .expect("failed to execute notify-send process");
     } else {
         // build MacOS terminal-notifier command line
+        let safe_message = message
+            .replace("[", "")
+            .replace("]", "");
         let mut notification_str = format!(
-            "-title \"{title}\" \
-            -subtitle \"{subtitle}\" \
-            -message \"{message}\" \
-            -sound \"{sound}\""
+            "-title '{title}' \
+            -subtitle '{subtitle}' \
+            -message '{safe_message}' \
+            -sound '{sound}'"
         );
         if open != "" {
             notification_str = format!("{notification_str} -open \"{open}\"")
