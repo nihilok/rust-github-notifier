@@ -162,21 +162,21 @@ fn parse_args() -> bool {
 }
 
 fn get_error_string(err: Vec<u8>) -> String {
-    if err.len() > 0 {
-        return String::from_utf8(err).unwrap();
-    }
-    return String::from("");
+    return String::from_utf8(err).expect("Could not decode stderr");
 }
 
 fn display_error(command: Output) {
     let err = command.stderr;
-    if err.len() > 0 {
-        let err_disp = get_error_string(err.clone());
-        if err_disp.contains("Input/output error") {
-            // launchd service was already stopped/started
-            return;
-        }
-        println!("{}", err_disp)
+    if err.len() == 0 {
+        return;
+    }
+    let err_string = get_error_string(err.clone());
+    if err_string.contains("Input/output error") {
+        // launchd service was already stopped/started
+        return;
+    }
+    if err_string.len() > 0 {
+        println!("{}", err_string)
     }
 }
 
@@ -219,16 +219,16 @@ async fn notify(title: &str, subtitle: &str, message: &str, sound: &str, open: &
     }
     let err = command.stderr;
     if err.len() > 0 {
-        let err_disp = String::from_utf8(err)
-            .expect("Could not decode error message (notify shell command) line 135");
-        panic!("{}", err_disp)
+        let err_disp = get_error_string(err);
+        println!("{}", err_disp);
+        process::exit(1);
     }
 }
 
 async fn notify_error(error: &str) {
     notify(
         "GitHub Notifier",
-        "error",
+        "Error",
         error,
         "Pop",
         "",
@@ -236,7 +236,7 @@ async fn notify_error(error: &str) {
 }
 
 async fn connection_error(detail: &str) {
-    let error_text: String = format!("Error calling API: {}", detail);
+    let error_text: String = format!("Response: {}", detail);
     notify_error(&error_text).await
 }
 
