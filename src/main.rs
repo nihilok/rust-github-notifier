@@ -6,13 +6,13 @@ use serde::Deserialize;
 use reqwest::{Client, Error};
 use reqwest::header::{AUTHORIZATION, ACCEPT, USER_AGENT};
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize)]
 struct NotificationSubject {
     title: String,
     url: Option<String>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize)]
 struct Notification {
     id: String,
     subject: NotificationSubject,
