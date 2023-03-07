@@ -164,16 +164,18 @@ fn parse_args() -> bool {
     }
 }
 
-fn get_error_string(err: Vec<u8>) -> String {
-    return String::from_utf8(err).expect("Could not decode stderr");
+fn get_error_string(err: Vec<u8>, line: &str) -> String {
+    let mut err_str=  String::from_utf8(err).expect("Could not decode stderr");
+    err_str.push_str(&format!(" (line {line})"));
+    err_str
 }
 
-fn display_error(command: Output) {
+fn display_error(command: Output, line: &str) {
     let err = command.stderr;
     if err.len() == 0 {
         return;
     }
-    let err_string = get_error_string(err.clone());
+    let err_string = get_error_string(err.clone(), line);
     if err_string.contains("Input/output error") {
         // launchd service was already stopped/started
         return;
@@ -211,10 +213,10 @@ async fn notify(title: &str, subtitle: &str, message: &str, sound: &str, open: &
             .replace("[", "")
             .replace("]", "");
         let mut notification_str = format!(
-            "-title '{title}' \
-            -subtitle '{subtitle}' \
-            -message '{safe_message}' \
-            -sound '{sound}'"
+            "-title \"{title}\" \
+            -subtitle \"{subtitle}\" \
+            -message \"{safe_message}\" \
+            -sound \"{sound}\""
         );
         if open != "" {
             notification_str = format!("{notification_str} -open \"{open}\"")
@@ -227,7 +229,7 @@ async fn notify(title: &str, subtitle: &str, message: &str, sound: &str, open: &
     }
     let err = command.stderr;
     if err.len() > 0 {
-        let err_disp = get_error_string(err);
+        let err_disp = get_error_string(err, "230");
         println!("{}", err_disp);
         process::exit(1);
     }
@@ -258,7 +260,7 @@ fn stop_service() {
         .arg(format!("launchctl unload $HOME/Library/LaunchAgents/com.gh-notifier.plist"))
         .output()
         .expect("failed to unload launch agent");
-    display_error(command);
+    display_error(command, "263");
 }
 
 fn start_service() {
@@ -267,5 +269,5 @@ fn start_service() {
         .arg(format!("launchctl load $HOME/Library/LaunchAgents/com.gh-notifier.plist"))
         .output()
         .expect("failed to load launch agent");
-    display_error(command);
+    display_error(command, "272");
 }
