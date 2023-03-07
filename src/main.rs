@@ -22,6 +22,7 @@ struct Notification {
 
 const REQUEST_URL: &str = "https://api.github.com/notifications";
 const ENV_VAR_NAME: &str = "GH_NOTIFIER_TOKEN";
+const DISALLOWED_CHARS: [char; 2] = ['[', ']'];
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -200,33 +201,42 @@ fn get_persistence_file_path() -> String {
 async fn notify(title: &str, subtitle: &str, message: &str, sound: &str, open: &str) {
     let command: Output;
     if cfg!(target_os = "linux") {
+        // build linux command line arguments
         // the notify-send api does not permit on click actions, `open` and `sound` are unused
         let notification_str = format!("\"{title} ({subtitle})\" \"{message}\"");
+
+        // execute command
         command = Command::new("sh")
             .arg("-c")
             .arg(format!("notify-send {notification_str}"))
             .output()
             .expect("failed to execute notify-send process");
     } else {
+        // escape chars not supported by terminal-notifier
+        let mut safe_message = message.to_owned();
+        for c in DISALLOWED_CHARS
+        { safe_message = safe_message.replace(c, "") };
+
         // build MacOS terminal-notifier command line
-        let safe_message = message
-            .replace("[", "")
-            .replace("]", "");
         let mut notification_str = format!(
             "-title \"{title}\" \
             -subtitle \"{subtitle}\" \
             -message \"{safe_message}\" \
             -sound \"{sound}\""
         );
-        if open != "" {
+        if open.len() > 0 {
             notification_str = format!("{notification_str} -open \"{open}\"")
         }
+
+        // execute the command
         command = Command::new("sh")
             .arg("-c")
             .arg(format!("terminal-notifier {notification_str}"))
             .output()
             .expect("failed to execute terminal-notifier process");
     }
+
+    // handle stderr
     let err = command.stderr;
     if err.len() > 0 {
         let err_disp = get_error_string(err, "230");
