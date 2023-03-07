@@ -22,7 +22,8 @@ struct Notification {
 
 const REQUEST_URL: &str = "https://api.github.com/notifications";
 const ENV_VAR_NAME: &str = "GH_NOTIFIER_TOKEN";
-const DISALLOWED_CHARS: [char; 2] = ['[', ']'];
+const TERMINAL_NOTIFIER_UNSAFE_CHARS: [char; 2] = ['[', ']'];
+const LAUNCH_AGENT_PLIST_PATH: &str = "$HOME/Library/LaunchAgents/com.gh-notifier.plist";
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -96,29 +97,18 @@ async fn main() -> Result<(), Error> {
 
         // build notification parts
         let title = &notification.subject.title;
-        let url = &notification.subject.url;
-        let pull_url: Option<String> = match url {
-            Some(ref url) => {
-                let url_parts = url.split("/").collect::<Vec<&str>>();
-                let len_url_parts = url_parts.len();
-                Some(format!(
-                    "https://github.com/{}/{}/pull/{}",
-                    url_parts[len_url_parts - 4],
-                    url_parts[len_url_parts - 3],
-                    url_parts[len_url_parts - 1]
-                ))
+        let optional_url = &notification.subject.url;
+        let onclick_url: String = match optional_url {
+            Some(url) => {
+                build_pull_or_issue_url(url)
             }
-            None => None
+            None => "".to_string()
         };
         let reason = &notification.reason;
         let reason = &reason
             .split("_")
             .collect::<Vec<&str>>()
             .join(" ");
-        let open = match &*&pull_url {
-            Some(url) => url.as_str(),
-            None => "",
-        };
 
         // display notification
         notify(
@@ -126,7 +116,7 @@ async fn main() -> Result<(), Error> {
             reason,
             title,
             "Glass",
-            open,
+            &onclick_url,
         ).await;
     }
 
@@ -143,6 +133,23 @@ async fn main() -> Result<(), Error> {
             .expect("Unable to write ids to file");
     }
     Ok(())
+}
+
+fn build_pull_or_issue_url(url: &String) -> String {
+    let url_parts = url.split("/").collect::<Vec<&str>>();
+    let len_url_parts = url_parts.len();
+    let pull_or_issue = if url_parts.contains(&"issue") {
+        "issue"
+    } else {
+        "pull"
+    };
+    format!(
+        "https://github.com/{}/{}/{}/{}",
+        url_parts[len_url_parts - 4],
+        url_parts[len_url_parts - 3],
+        pull_or_issue,
+        url_parts[len_url_parts - 1]
+    )
 }
 
 fn parse_args() -> bool {
@@ -214,7 +221,7 @@ async fn notify(title: &str, subtitle: &str, message: &str, sound: &str, open: &
     } else {
         // escape chars not supported by terminal-notifier
         let mut safe_message = message.to_owned();
-        for c in DISALLOWED_CHARS
+        for c in TERMINAL_NOTIFIER_UNSAFE_CHARS
         { safe_message = safe_message.replace(c, "") };
 
         // build MacOS terminal-notifier command line
@@ -267,7 +274,7 @@ fn get_args() -> Vec<String> {
 fn stop_service() {
     let command = Command::new("sh")
         .arg("-c")
-        .arg(format!("launchctl unload $HOME/Library/LaunchAgents/com.gh-notifier.plist"))
+        .arg(format!("launchctl unload {LAUNCH_AGENT_PLIST_PATH}"))
         .output()
         .expect("failed to unload launch agent");
     display_error(command, "263");
@@ -276,7 +283,7 @@ fn stop_service() {
 fn start_service() {
     let command = Command::new("sh")
         .arg("-c")
-        .arg(format!("launchctl load $HOME/Library/LaunchAgents/com.gh-notifier.plist"))
+        .arg(format!("launchctl load {LAUNCH_AGENT_PLIST_PATH}"))
         .output()
         .expect("failed to load launch agent");
     display_error(command, "272");
