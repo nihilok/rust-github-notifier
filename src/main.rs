@@ -31,7 +31,7 @@ async fn main() -> Result<(), Error> {
     if parse_args() {
         return Ok(());
     }
-    // else if no arguments used, continue with default actions:
+    // else if no arguments used, proceed with default actions:
 
     // get token from environment variable
     let token = match env::var(ENV_VAR_NAME) {
@@ -84,7 +84,7 @@ async fn main() -> Result<(), Error> {
     let response_json: Vec<Notification> = response.json().await?;
 
     // loop through notifications in response, checking against saved notification ids
-    // and notify if not already saved
+    // and display desktop notification if identifier not already saved to file
     for notification in &response_json {
         let mut identifier: String = notification.id.to_owned();
         identifier.push_str(&notification.updated_at);
@@ -172,13 +172,16 @@ fn parse_args() -> bool {
     }
 }
 
-fn get_error_string(err: Vec<u8>, line: &str) -> String {
-    let mut err_str=  String::from_utf8(err).expect("Could not decode stderr");
-    err_str.push_str(&format!(" (line {line})"));
+fn get_error_string(err: Vec<u8>, line: Option<&str>) -> String {
+    let mut err_str=  String::from_utf8(err)
+        .expect("Could not decode stderr");
+    if let Some(l) = line {
+        err_str.push_str(&format!("\nline {l}"))
+    }
     err_str
 }
 
-fn display_error(command: Output, line: &str) {
+fn display_error(command: Output, line: Option<&str>) {
     let err = command.stderr;
     if err.len() == 0 {
         return;
@@ -246,7 +249,7 @@ async fn notify(title: &str, subtitle: &str, message: &str, sound: &str, open: &
     // handle stderr
     let err = command.stderr;
     if err.len() > 0 {
-        let err_disp = get_error_string(err, "230");
+        let err_disp = get_error_string(err, Some("230"));
         println!("{}", err_disp);
         process::exit(1);
     }
@@ -277,7 +280,7 @@ fn stop_service() {
         .arg(format!("launchctl unload {LAUNCH_AGENT_PLIST_PATH}"))
         .output()
         .expect("failed to unload launch agent");
-    display_error(command, "263");
+    display_error(command, Some("263"));
 }
 
 fn start_service() {
@@ -286,5 +289,5 @@ fn start_service() {
         .arg(format!("launchctl load {LAUNCH_AGENT_PLIST_PATH}"))
         .output()
         .expect("failed to load launch agent");
-    display_error(command, "272");
+    display_error(command, Some("272"));
 }
