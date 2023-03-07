@@ -1,10 +1,11 @@
 use std::{env, fs, process};
 use std::fs::File;
 use std::path::Path;
-use std::process::{Command, Output};
 use serde::Deserialize;
 use reqwest::{Client, Error};
-use reqwest::header::{AUTHORIZATION, ACCEPT, USER_AGENT};
+use reqwest::header::{ACCEPT, AUTHORIZATION, USER_AGENT};
+use command_line::execute_command;
+use notify::notify;
 
 #[derive(Deserialize)]
 struct NotificationSubject {
@@ -22,7 +23,6 @@ struct Notification {
 
 const REQUEST_URL: &str = "https://api.github.com/notifications";
 const ENV_VAR_NAME: &str = "GH_NOTIFIER_TOKEN";
-const TERMINAL_NOTIFIER_UNSAFE_CHARS: [char; 2] = ['[', ']'];
 const LAUNCH_AGENT_PLIST_PATH: &str = "$HOME/Library/LaunchAgents/com.gh-notifier.plist";
 
 #[tokio::main]
@@ -38,7 +38,7 @@ async fn main() -> Result<(), Error> {
         Ok(t) => t,
         Err(e) => {
             let error_text = format!("{} {}", ENV_VAR_NAME, e);
-            notify_error(&error_text).await;
+            notify_error(&error_text);
             println!("{}", error_text);
             process::exit(1);
         }
@@ -56,7 +56,7 @@ async fn main() -> Result<(), Error> {
         .send().await {
         Ok(r) => r,
         Err(e) => {
-            connection_error(&format!("{e}")).await;
+            connection_error(&format!("{e}"));
             println!("{}", e);
             process::exit(1);
         }
@@ -67,7 +67,7 @@ async fn main() -> Result<(), Error> {
     if status != 200 {
         let text = response.text().await?;
         let detail = text.split(' ').collect::<String>();
-        connection_error(&format!("{status} {detail}")).await;
+        connection_error(&format!("{status} {detail}"));
         println!("Error response: {} {}", status, text);
         process::exit(1);
     };
@@ -117,7 +117,7 @@ async fn main() -> Result<(), Error> {
             title,
             "Glass",
             &onclick_url,
-        ).await;
+        );
     }
 
     // save notified IDs to persistence file
@@ -136,64 +136,21 @@ async fn main() -> Result<(), Error> {
 }
 
 fn build_pull_or_issue_url(url: &String) -> String {
+    // url returned is for the api, we need to build the html url
     let url_parts = url.split("/").collect::<Vec<&str>>();
     let len_url_parts = url_parts.len();
-    let pull_or_issue = if url_parts.contains(&"issue") {
-        "issue"
+    let pull_or_issue = if url_parts.contains(&"issues") {
+        "issues"
     } else {
         "pull"
     };
     format!(
         "https://github.com/{}/{}/{}/{}",
-        url_parts[len_url_parts - 4],
-        url_parts[len_url_parts - 3],
-        pull_or_issue,
-        url_parts[len_url_parts - 1]
+        url_parts[len_url_parts - 4],   // user/org
+        url_parts[len_url_parts - 3],   // repo
+        pull_or_issue,                  // pull/issues
+        url_parts[len_url_parts - 1]    // #number
     )
-}
-
-fn parse_args() -> bool {
-    let args = get_args();
-    if args.len() < 2 {
-        return false;
-    }
-    match args[1].as_str() {
-        "stop" => {
-            stop_service();
-            true
-        }
-        "start" => {
-            start_service();
-            true
-        }
-        _ => {
-            false
-        }
-    }
-}
-
-fn get_error_string(err: Vec<u8>, line: Option<&str>) -> String {
-    let mut err_str=  String::from_utf8(err)
-        .expect("Could not decode stderr");
-    if let Some(l) = line {
-        err_str.push_str(&format!("\nline {l}"))
-    }
-    err_str
-}
-
-fn display_error(command: Output, line: Option<&str>) {
-    let err = command.stderr;
-    if err.len() == 0 {
-        return;
-    }
-    let err_string = get_error_string(err.clone(), line);
-    if err_string.contains("Input/output error") {
-        // launchd service was already stopped/started
-        return;
-    }
-    if err_string.len() > 0 {
-        println!("{}", err_string)
-    }
 }
 
 fn get_persistence_file_path() -> String {
@@ -208,86 +165,47 @@ fn get_persistence_file_path() -> String {
     ids_file_path
 }
 
-async fn notify(title: &str, subtitle: &str, message: &str, sound: &str, open: &str) {
-    let command: Output;
-    if cfg!(target_os = "linux") {
-        // build linux command line arguments
-        // the notify-send api does not permit on click actions, `open` and `sound` are unused
-        let notification_str = format!("\"{title} ({subtitle})\" \"{message}\"");
-
-        // execute command
-        command = Command::new("sh")
-            .arg("-c")
-            .arg(format!("notify-send {notification_str}"))
-            .output()
-            .expect("failed to execute notify-send process");
-    } else {
-        // escape chars not supported by terminal-notifier
-        let mut safe_message = message.to_owned();
-        for c in TERMINAL_NOTIFIER_UNSAFE_CHARS
-        { safe_message = safe_message.replace(c, "") };
-
-        // build MacOS terminal-notifier command line
-        let mut notification_str = format!(
-            "-title \"{title}\" \
-            -subtitle \"{subtitle}\" \
-            -message \"{safe_message}\" \
-            -sound \"{sound}\""
-        );
-        if open.len() > 0 {
-            notification_str = format!("{notification_str} -open \"{open}\"")
-        }
-
-        // execute the command
-        command = Command::new("sh")
-            .arg("-c")
-            .arg(format!("terminal-notifier {notification_str}"))
-            .output()
-            .expect("failed to execute terminal-notifier process");
-    }
-
-    // handle stderr
-    let err = command.stderr;
-    if err.len() > 0 {
-        let err_disp = get_error_string(err, Some("230"));
-        println!("{}", err_disp);
-        process::exit(1);
-    }
-}
-
-async fn notify_error(error: &str) {
-    notify(
-        "GitHub Notifier",
-        "Error",
-        error,
-        "Pop",
-        "",
-    ).await
-}
-
-async fn connection_error(detail: &str) {
-    let error_text: String = format!("Response: {}", detail);
-    notify_error(&error_text).await
-}
-
 fn get_args() -> Vec<String> {
     env::args().collect()
 }
 
-fn stop_service() {
-    let command = Command::new("sh")
-        .arg("-c")
-        .arg(format!("launchctl unload {LAUNCH_AGENT_PLIST_PATH}"))
-        .output()
-        .expect("failed to unload launch agent");
-    display_error(command, Some("263"));
+fn stop_service() -> bool {
+    execute_command(&format!("launchctl unload {LAUNCH_AGENT_PLIST_PATH}"), false)
 }
 
-fn start_service() {
-    let command = Command::new("sh")
-        .arg("-c")
-        .arg(format!("launchctl load {LAUNCH_AGENT_PLIST_PATH}"))
-        .output()
-        .expect("failed to load launch agent");
-    display_error(command, Some("272"));
+fn start_service() -> bool {
+    execute_command(&format!("launchctl load {LAUNCH_AGENT_PLIST_PATH}"), false)
+}
+
+fn parse_args() -> bool {
+    let args = get_args();
+    if args.len() < 2 {
+        return false;
+    }
+    match args[1].as_str() {
+        "stop" => {
+            stop_service()
+        }
+        "start" => {
+            start_service()
+        }
+        _ => {
+            false
+        }
+    }
+}
+
+fn notify_error(error: &str) {
+    notify(
+        "Github Notifier",
+        "Error",
+        error,
+        "Pop",
+        "",
+    )
+}
+
+fn connection_error(detail: &str) {
+    let error_text: String = format!("Response: {}", detail);
+    notify_error(&error_text)
 }

@@ -45,6 +45,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
+name = "command_line"
+version = "0.1.0"
+
+[[package]]
 name = "core-foundation"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -149,8 +153,10 @@ dependencies = [
 
 [[package]]
 name = "gh-notifier"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
+ "command_line",
+ "notify",
  "reqwest",
  "serde",
  "serde_json",
@@ -383,6 +389,13 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "tempfile",
+]
+
+[[package]]
+name = "notify"
+version = "0.1.0"
+dependencies = [
+ "command_line",
 ]
 
 [[package]]
