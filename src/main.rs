@@ -184,10 +184,12 @@ fn parse_args() -> bool {
     }
     match args[1].as_str() {
         "stop" => {
-            stop_service()
+            stop_service();
+            true
         }
         "start" => {
-            start_service()
+            start_service();
+            true
         }
         _ => {
             false
