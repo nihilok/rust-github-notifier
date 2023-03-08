@@ -15,16 +15,14 @@ BINARY_PATH="$DIST_PATH/gh-notifier"
 [ ! -d "$DIST_PATH" ] &&
 echo -e "
 ${RED_BG}${BLACK_FG}ERROR:${DEFAULT} install.sh must be run from inside the source directory
-" &&
-exit 1
+" && exit 1
 
 # check for correct environment variable
 [ -z "$GH_NOTIFIER_TOKEN" ] &&
 echo -e "
 ${RED_BG}${BLACK_FG}ERROR:${DEFAULT} GH_NOTIFIER_TOKEN environment variable not set
 ${YELLOW_FG}hint:${DEFAULT} prefix the command with 'GH_NOTIFIER_TOKEN=<personal-access-token-with-notifications-scope>'
-" &&
-exit 1
+" && exit 1
 
 # build latest version of rust binary
 if command -v cargo -h &> /dev/null; then
