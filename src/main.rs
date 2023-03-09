@@ -115,7 +115,7 @@ async fn main() -> Result<(), Error> {
             "New Github Notification",
             reason,
             title,
-            "Glass",
+            "default",
             &onclick_url,
         );
     }
