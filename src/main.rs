@@ -145,7 +145,7 @@ async fn main() -> Result<(), Error> {
             }
         }
     } else if ids_len > 1 {
-        let ids_to_write: String = new_ids.iter().map(|id| id.to_string() + ",").collect();
+        let ids_to_write: String = new_ids.join(",");
         match fs::write(&ids_file_path, ids_to_write) {
             Ok(_) => (),
             Err(err) => {
