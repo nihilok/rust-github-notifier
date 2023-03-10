@@ -1,17 +1,26 @@
-use command_line::execute_command;
-use notify::{notify, NotificationParamsBuilder};
+use std::{env, fs, process};
+
 use reqwest::header::{ACCEPT, AUTHORIZATION, USER_AGENT};
 use reqwest::{Client, Error};
 use serde::Deserialize;
-use std::fs::File;
-use std::path::Path;
-use std::{env, fs, process};
+
+use notify::{NotificationParamsBuilder, notify};
+
+pub mod util;
+
+use util::*;
+
+
+const REQUEST_URL: &str = "https://api.github.com/notifications";
+const ENV_VAR_NAME: &str = "GH_NOTIFIER_TOKEN";
+
 
 #[derive(Deserialize)]
 struct NotificationSubject {
     title: String,
     url: Option<String>,
 }
+
 
 #[derive(Deserialize)]
 struct Notification {
@@ -21,9 +30,6 @@ struct Notification {
     updated_at: String,
 }
 
-const REQUEST_URL: &str = "https://api.github.com/notifications";
-const ENV_VAR_NAME: &str = "GH_NOTIFIER_TOKEN";
-const LAUNCH_AGENT_PLIST_PATH: &str = "$HOME/Library/LaunchAgents/com.gh-notifier.plist";
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -57,10 +63,10 @@ async fn main() -> Result<(), Error> {
         .send()
         .await
     {
-        Ok(r) => r,
-        Err(e) => {
-            notify_connection_error(&format!("{e}"));
-            println!("{}", e);
+        Ok(response) => response,
+        Err(err) => {
+            notify_connection_error(&format!("{err}"));
+            println!("{}", err);
             process::exit(1);
         }
     };
@@ -76,7 +82,10 @@ async fn main() -> Result<(), Error> {
     };
 
     // read already notified ids from file
-    let read_ids_str = fs::read_to_string(&ids_file_path).expect("could not read ids from file");
+    let read_ids_str = match fs::read_to_string(&ids_file_path) {
+        Ok(ids) => ids,
+        _ => "".to_string()
+    };
     let read_id_strs = read_ids_str.split(",").collect::<Vec<&str>>();
     let mut new_ids: Vec<String> = Vec::new();
 
@@ -102,7 +111,7 @@ async fn main() -> Result<(), Error> {
             Some(url) => {
                 let pull_issue_url = build_pull_or_issue_url(&url);
                 pull_issue_url
-            },
+            }
             None => "".to_string(),
         };
         let subtitle = (&notification
@@ -111,102 +120,38 @@ async fn main() -> Result<(), Error> {
             .collect::<Vec<&str>>()
             .join(" ")).to_owned();
 
-        let params = NotificationParamsBuilder::default()
+        // display notification
+        match NotificationParamsBuilder::default()
             .title("New Github Notification")
             .subtitle(subtitle.as_str())
             .message(message)
             .open(onclick_url.as_str())
             .build()
-            .expect("Failed to build Github notification parts");
-
-        // display notification
-        notify(&params);
+        {
+            Ok(params) => notify(&params),
+            Err(err) => {
+                dbg!(err);
+            }
+        }
     }
 
     // save notified IDs to persistence file
     let ids_len = new_ids.len();
     if ids_len == 1 {
-        fs::write(&ids_file_path, &new_ids[0]).expect("Unable to write ids to file");
+        match fs::write(&ids_file_path, &new_ids[0]) {
+            Ok(_) => (),
+            Err(err) => {
+                dbg!(err);
+            }
+        }
     } else if ids_len > 1 {
         let ids_to_write: String = new_ids.iter().map(|id| id.to_string() + ",").collect();
-        fs::write(&ids_file_path, ids_to_write).expect("Unable to write ids to file");
+        match fs::write(&ids_file_path, ids_to_write) {
+            Ok(_) => (),
+            Err(err) => {
+                dbg!(err);
+            }
+        }
     }
     Ok(())
-}
-
-fn build_pull_or_issue_url(url: &String) -> String {
-    // url returned is for the api, we need to build the html url
-    let url_parts = url.split("/").collect::<Vec<&str>>();
-    let len_url_parts = url_parts.len();
-    let pull_or_issue = if url_parts.contains(&"issues") {
-        "issues"
-    } else {
-        "pull"
-    };
-    format!(
-        "https://github.com/{}/{}/{}/{}",
-        url_parts[len_url_parts - 4], // user/org
-        url_parts[len_url_parts - 3], // repo
-        pull_or_issue,                // pull/issues
-        url_parts[len_url_parts - 1]  // #number
-    )
-}
-
-fn get_persistence_file_path() -> String {
-    let mut ids_file_path = env::var("HOME").expect("$HOME environment variable is not set");
-    let ids_filename = "/.gh-read-notification-ids";
-    ids_file_path.push_str(ids_filename);
-    if !Path::new(&ids_file_path).exists() {
-        File::create(&ids_file_path).expect("creating persistent ids file failed");
-    }
-    ids_file_path
-}
-
-fn get_args() -> Vec<String> {
-    env::args().collect()
-}
-
-fn stop_service() -> bool {
-    execute_command(
-        &format!("launchctl unload {LAUNCH_AGENT_PLIST_PATH}"),
-        false,
-    )
-}
-
-fn start_service() -> bool {
-    execute_command(&format!("launchctl load {LAUNCH_AGENT_PLIST_PATH}"), false)
-}
-
-fn parse_args() -> bool {
-    let args = get_args();
-    if args.len() < 2 {
-        return false;
-    }
-    match args[1].as_str() {
-        "stop" => {
-            stop_service();
-            true
-        }
-        "start" => {
-            start_service();
-            true
-        }
-        _ => false,
-    }
-}
-
-fn notify_error(error: &str) {
-    let params = NotificationParamsBuilder::default()
-        .title("Github Notifier")
-        .subtitle("Error")
-        .message(error)
-        .sound("Pop")
-        .build()
-        .expect("Could not build error notification");
-    notify(&params)
-}
-
-fn notify_connection_error(detail: &str) {
-    let error_text: String = format!("Response: {}", detail);
-    notify_error(&error_text)
 }
