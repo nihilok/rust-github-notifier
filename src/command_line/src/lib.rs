@@ -1,6 +1,6 @@
 use std::process::Command;
 
-pub fn execute_command(command_line: &str, print_stderr: bool) -> bool {
+pub fn execute_command(command_line: &str, log_stderr: bool) -> bool {
     let output = Command::new("sh")
         .arg("-c")
         .arg(format!("{command_line}"))
@@ -8,7 +8,7 @@ pub fn execute_command(command_line: &str, print_stderr: bool) -> bool {
     return match output {
         Ok(output) => {
             if !output.status.success() {
-                if output.stderr.len() > 0 && print_stderr {
+                if output.stderr.len() > 0 && log_stderr {
                     println!(
                         "{}",
                         String::from_utf8(output.stderr)
@@ -26,6 +26,12 @@ pub fn execute_command(command_line: &str, print_stderr: bool) -> bool {
     }
 }
 
+
+pub fn command_exists(command: &str) -> bool {
+    execute_command(&format!("command -v {command} &> /dev/null"), false)
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -38,7 +44,20 @@ mod tests {
 
     #[test]
     fn it_fails() {
-        let result = execute_command("invalid-command-xxxxxxxxxxxx", false);
+        let result = execute_command("invalid-command-xxxxxxxxxxxx", true);
+        // stderr should be logged to the console
+        assert_eq!(result, false);
+    }
+
+    #[test]
+    fn test_command_exists() {
+        let result = command_exists("echo");
+        assert_eq!(result, true);
+    }
+
+    #[test]
+    fn test_command_not_exists() {
+        let result = command_exists("invalid-command-xxxxxxxxxxxx");
         assert_eq!(result, false);
     }
 }

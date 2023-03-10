@@ -1,5 +1,8 @@
+use command_line::{command_exists, execute_command};
 use std::process;
-use command_line::execute_command;
+
+#[macro_use]
+extern crate derive_builder;
 
 #[cfg(test)]
 mod tests {
@@ -7,22 +10,52 @@ mod tests {
 
     #[test]
     fn it_works() {
-        notify(
-            "TEST NOTIFICATION",
-            "Subtitle",
-            "This is the message.",
-            "Pop",
-            "https://google.com",
-        )
+        let notification = NotificationPartsBuilder::default()
+            .title("TEST NOTIFICATION")
+            .subtitle("Subtitle")
+            .message("This is the message.")
+            .sound("Pop")
+            .open("https://google.com")
+            .build()
+            .expect("Could not build notification");
+
+        notify(&notification)
+        // you should see a notification
     }
 }
 
 const TERMINAL_NOTIFIER_UNSAFE_CHARS: [char; 2] = ['[', ']'];
 
+#[derive(Default, Builder)]
+pub struct NotificationParams<'notification> {
+    #[builder(setter(into))]
+    pub title: &'notification str,
+    #[builder(setter(into))]
+    pub subtitle: &'notification str,
+    #[builder(setter(into))]
+    pub message: &'notification str,
+    #[builder(setter(strip_option), default)]
+    pub sound: Option<&'notification str>,
+    #[builder(setter(strip_option), default)]
+    pub open: Option<&'notification str>,
+}
 
-pub fn notify(title: &str, subtitle: &str, message: &str, sound: &str, open: &str) {
+pub fn notify(notification: &NotificationParams) {
+    let title = notification.title;
+    let subtitle = notification.subtitle;
+    let message = notification.message;
     if cfg!(target_os = "macos") {
-        terminal_notifier_command(title, subtitle, message, sound, open);
+        let sound_str = match notification.sound {
+            Some(s) => s,
+            None => "default",
+        };
+
+        let open_str = match notification.open {
+            Some(s) => s,
+            None => "",
+        };
+
+        terminal_notifier_command(title, subtitle, message, sound_str, open_str);
     } else {
         notify_send_command(title, subtitle, message);
     }
@@ -30,15 +63,16 @@ pub fn notify(title: &str, subtitle: &str, message: &str, sound: &str, open: &st
 
 fn terminal_notifier_command(title: &str, subtitle: &str, message: &str, sound: &str, open: &str) {
     // check terminal-notifier is installed
-    if !check_command("terminal-notifier -h") {
+    if !command_exists("terminal-notifier -h") {
         println!("terminal-notifier is not available. Is it installed?");
         process::exit(1);
     }
 
     // escape chars not supported by terminal-notifier
     let mut safe_message = message.to_owned();
-    for c in TERMINAL_NOTIFIER_UNSAFE_CHARS
-    { safe_message = safe_message.replace(c, "") };
+    for c in TERMINAL_NOTIFIER_UNSAFE_CHARS {
+        safe_message = safe_message.replace(c, "")
+    }
 
     // build MacOS terminal-notifier command line
     let mut notification_str = format!(
@@ -57,19 +91,15 @@ fn terminal_notifier_command(title: &str, subtitle: &str, message: &str, sound: 
 
 fn notify_send_command(title: &str, subtitle: &str, message: &str) {
     // check notify-send is installed
-    if !check_command("notify-send -h") {
+    if !command_exists("notify-send -h") {
         println!("notify-send is not available. Is it installed?");
         process::exit(1);
     }
 
     // build linux command line arguments
-    // the notify-send api does not permit on click actions, `open` and `sound` are unused
+    // the notify-send api does not support on-click actions
     let notification_str = format!("\"{title} ({subtitle})\" \"{message}\"");
 
     // execute command
     execute_command(&format!("notify-send {notification_str}"), true);
-}
-
-fn check_command(command: &str) -> bool {
-    execute_command(&format!("command -v {command} &> /dev/null"), false)
 }

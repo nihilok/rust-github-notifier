@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 command_line = {path = "../command_line"}
+derive_builder = "0.12.0"
