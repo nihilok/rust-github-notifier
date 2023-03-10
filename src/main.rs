@@ -38,8 +38,8 @@ async fn main() -> Result<(), Error> {
     // get token from environment variable
     let token = match env::var(ENV_VAR_NAME) {
         Ok(t) => t,
-        Err(e) => {
-            let error_text = format!("{} {}", ENV_VAR_NAME, e);
+        Err(err) => {
+            let error_text = format!("{} {}", ENV_VAR_NAME, err);
             notify_error(&error_text);
             println!("{}", error_text);
             process::exit(1);
