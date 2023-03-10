@@ -1,8 +1,9 @@
-use command_line::execute_command;
-use notify::{notify, NotificationParamsBuilder};
 use std::env;
 use std::fs::File;
 use std::path::Path;
+
+use command_line::execute_command;
+use notify::{notify, NotificationParamsBuilder};
 
 const LAUNCH_AGENT_PLIST_PATH: &str = "$HOME/Library/LaunchAgents/com.gh-notifier.plist";
 
