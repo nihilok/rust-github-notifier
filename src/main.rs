@@ -4,23 +4,20 @@ use reqwest::header::{ACCEPT, AUTHORIZATION, USER_AGENT};
 use reqwest::{Client, Error};
 use serde::Deserialize;
 
-use notify::{NotificationParamsBuilder, notify};
+use notify::{notify, NotificationParamsBuilder};
 
 pub mod util;
 
 use util::*;
 
-
 const REQUEST_URL: &str = "https://api.github.com/notifications";
 const ENV_VAR_NAME: &str = "GH_NOTIFIER_TOKEN";
-
 
 #[derive(Deserialize)]
 struct NotificationSubject {
     title: String,
     url: Option<String>,
 }
-
 
 #[derive(Deserialize)]
 struct Notification {
@@ -29,7 +26,6 @@ struct Notification {
     reason: String,
     updated_at: String,
 }
-
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -84,16 +80,16 @@ async fn main() -> Result<(), Error> {
     // read already notified ids from file
     let read_ids_str = match fs::read_to_string(&ids_file_path) {
         Ok(ids) => ids,
-        _ => "".to_string()
+        _ => "".to_string(),
     };
     let read_id_strs = read_ids_str.split(",").collect::<Vec<&str>>();
-    let mut new_ids: Vec<String> = Vec::new();
 
     // handle successful API response
     let response_json: Vec<Notification> = response.json().await?;
 
     // loop through notifications in response, checking against saved notification ids
     // and display desktop notification if identifier not already saved to file
+    let mut new_ids: Vec<String> = Vec::new();
     for notification in &response_json {
         let mut identifier: String = notification.id.to_owned();
         identifier.push_str(&notification.updated_at);
@@ -105,26 +101,17 @@ async fn main() -> Result<(), Error> {
         }
 
         // build notification parts
-        let message = notification.subject.title.as_str();
+        let message = &notification.subject.title;
         let optional_url = notification.subject.url.clone();
-        let onclick_url = match optional_url {
-            Some(url) => {
-                let pull_issue_url = build_pull_or_issue_url(&url);
-                pull_issue_url
-            }
-            None => "".to_string(),
-        };
-        let subtitle = (&notification
-            .reason
-            .split("_")
-            .collect::<Vec<&str>>()
-            .join(" ")).to_owned();
+        let onclick_url = build_pull_or_issue_url(optional_url);
+        let reason_vec = &notification.reason.split("_").collect::<Vec<&str>>();
+        let subtitle = reason_vec.join(" ");
 
         // display notification
         match NotificationParamsBuilder::default()
             .title("New Github Notification")
             .subtitle(subtitle.as_str())
-            .message(message)
+            .message(message.as_str())
             .open(onclick_url.as_str())
             .build()
         {
@@ -135,7 +122,7 @@ async fn main() -> Result<(), Error> {
         }
     }
 
-    // save notified IDs to persistence file
+    // save notified IDs to file system
     let ids_len = new_ids.len();
     if ids_len == 1 {
         match fs::write(&ids_file_path, &new_ids[0]) {

@@ -1,17 +1,14 @@
-use std::env;
-use std::path::Path;
-use std::fs::File;
 use command_line::execute_command;
-use notify::{NotificationParamsBuilder, notify};
-
+use notify::{notify, NotificationParamsBuilder};
+use std::env;
+use std::fs::File;
+use std::path::Path;
 
 const LAUNCH_AGENT_PLIST_PATH: &str = "$HOME/Library/LaunchAgents/com.gh-notifier.plist";
-
 
 fn get_args() -> Vec<String> {
     env::args().collect()
 }
-
 
 fn stop_service() -> bool {
     execute_command(
@@ -20,11 +17,9 @@ fn stop_service() -> bool {
     )
 }
 
-
 fn start_service() -> bool {
     execute_command(&format!("launchctl load {LAUNCH_AGENT_PLIST_PATH}"), false)
 }
-
 
 pub fn parse_args() -> bool {
     let args = get_args();
@@ -44,25 +39,28 @@ pub fn parse_args() -> bool {
     }
 }
 
-
-pub fn build_pull_or_issue_url(url: &String) -> String {
+pub fn build_pull_or_issue_url(url: Option<String>) -> String {
     // url returned is for the api, we need to build the html url
-    let url_parts = url.split("/").collect::<Vec<&str>>();
-    let len_url_parts = url_parts.len();
-    let pull_or_issue = if url_parts.contains(&"issues") {
-        "issues"
-    } else {
-        "pull"
-    };
-    format!(
-        "https://github.com/{}/{}/{}/{}",
-        url_parts[len_url_parts - 4], // user/org
-        url_parts[len_url_parts - 3], // repo
-        pull_or_issue,                // pull/issues
-        url_parts[len_url_parts - 1]  // #number
-    )
+    match url {
+        Some(url) => {
+            let url_parts = url.split("/").collect::<Vec<&str>>();
+            let len_url_parts = url_parts.len();
+            let pull_or_issue = if url_parts.contains(&"issues") {
+                "issues"
+            } else {
+                "pull"
+            };
+            format!(
+                "https://github.com/{}/{}/{}/{}",
+                url_parts[len_url_parts - 4], // user/org
+                url_parts[len_url_parts - 3], // repo
+                pull_or_issue,                // pull/issues
+                url_parts[len_url_parts - 1]  // #number
+            )
+        }
+        None => "".to_string(),
+    }
 }
-
 
 pub fn get_persistence_file_path() -> String {
     let mut ids_file_path = env::var("HOME").expect("$HOME environment variable is not set");
@@ -74,19 +72,20 @@ pub fn get_persistence_file_path() -> String {
     ids_file_path
 }
 
-
 pub fn notify_error(error: &str) {
     match NotificationParamsBuilder::default()
         .title("Github Notifier")
         .subtitle("Error")
         .message(error)
         .sound("Pop")
-        .build() {
+        .build()
+    {
         Ok(n) => notify(&n),
-        Err(err) => { dbg!(err); }
+        Err(err) => {
+            dbg!(err);
+        }
     }
 }
-
 
 pub fn notify_connection_error(detail: &str) {
     let error_text: String = format!("Response: {}", detail);
