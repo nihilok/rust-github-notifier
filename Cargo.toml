@@ -10,5 +10,5 @@ serde = { version = "1.0.14", features = ["derive"] }
 serde_json = "1"
 reqwest = {version = "0.11.1", features = ["json"] }
 tokio = { version = "1", features = ["full"] }
-command_line = {path = "src/command_line"}
-notify = {path = "src/notify"}
+command_line = {git = "https://github.com/nihilok/rust-command-line.git" }
+notify = {git = "https://github.com/nihilok/rust-notify.git" }

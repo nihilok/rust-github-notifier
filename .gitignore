@@ -1,4 +1,4 @@
 /target
 .idea/
-/src/notify/target/
-/src/command_line/target/
+/notify/target/
+/command_line/target/

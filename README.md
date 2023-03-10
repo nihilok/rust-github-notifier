@@ -5,6 +5,12 @@
 - the binary depends on `terminal-notifier` [source](https://github.com/julienXX/terminal-notifier) (macos) and this will be installed automatically if you use the install script provided. (On linux the equivalent dependency is `notify-send` which will not be installed automatically).
 - installation (or standalone binary) depends on having a `GH_NOTIFIER_TOKEN` environment variable set to a [personal access token](https://github.com/settings/tokens) with Notifications scope.
 
+### External Crates:
+
+- https://github.com/nihilok/rust-notify
+- https://github.com/nihilok/rust-command-line
+
+
 ## Installation:
 
 ```bash
