@@ -4,10 +4,7 @@ use reqwest::header::{ACCEPT, AUTHORIZATION, USER_AGENT};
 use reqwest::{Client, Error};
 use serde::Deserialize;
 
-use notify::{notify, NotificationParamsBuilder};
-
 pub mod util;
-
 use util::*;
 
 const REQUEST_URL: &str = "https://api.github.com/notifications";
@@ -29,11 +26,10 @@ struct Notification {
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    // handle command line arguments
     if parse_args() {
         return Ok(());
     }
-    // else if no arguments used, proceed with default actions:
+    // if no cli arguments used, proceed with main actions:
 
     // get token from environment variable
     let token = match env::var(ENV_VAR_NAME) {
@@ -41,13 +37,10 @@ async fn main() -> Result<(), Error> {
         Err(err) => {
             let error_text = format!("{} {}", ENV_VAR_NAME, err);
             notify_error(&error_text);
-            println!("{}", error_text);
+            dbg!(error_text);
             process::exit(1);
         }
     };
-
-    // get or create local persistence file to save notification ids already shown
-    let ids_file_path = get_persistence_file_path();
 
     // make request to GH notifications API
     let client = Client::new();
@@ -61,8 +54,8 @@ async fn main() -> Result<(), Error> {
     {
         Ok(response) => response,
         Err(err) => {
-            notify_connection_error(&format!("{err}"));
-            println!("{}", err);
+            notify_error(&format!("{err}"));
+            dbg!(err);
             process::exit(1);
         }
     };
@@ -71,25 +64,26 @@ async fn main() -> Result<(), Error> {
     let status = response.status();
     if status != 200 {
         let text = response.text().await?;
-        let detail = text.split(' ').collect::<String>();
-        notify_connection_error(&format!("{status} {detail}"));
-        println!("Error response: {} {}", status, text);
+        let error_text: String = format!("Response: {} {}", status, text);
+        notify_error(&error_text);
+        dbg!("Error response: {} {}", status, text);
         process::exit(1);
     };
 
-    // read already notified ids from file
+    // handle successful API response
+    let response_json: Vec<Notification> = response.json().await?;
+
+    // read/parse already notified ids from file
+    let ids_file_path = get_persistence_file_path();
     let read_ids_str = match fs::read_to_string(&ids_file_path) {
         Ok(ids) => ids,
         _ => "".to_string(),
     };
     let read_id_strs = read_ids_str.split(",").collect::<Vec<&str>>();
-
-    // handle successful API response
-    let response_json: Vec<Notification> = response.json().await?;
+    let mut new_ids: Vec<String> = Vec::new();
 
     // loop through notifications in response, checking against saved notification ids
     // and display desktop notification if identifier not already saved to file
-    let mut new_ids: Vec<String> = Vec::new();
     for notification in &response_json {
         let mut identifier: String = notification.id.to_owned();
         identifier.push_str(&notification.updated_at);
@@ -107,19 +101,7 @@ async fn main() -> Result<(), Error> {
         let reason_vec = &notification.reason.split("_").collect::<Vec<&str>>();
         let subtitle = reason_vec.join(" ");
 
-        // display notification
-        match NotificationParamsBuilder::default()
-            .title("New Github Notification")
-            .subtitle(subtitle.as_str())
-            .message(message.as_str())
-            .open(onclick_url.as_str())
-            .build()
-        {
-            Ok(params) => notify(&params),
-            Err(err) => {
-                dbg!(err);
-            }
-        }
+        display_new_github_notification(message, onclick_url.as_str(), subtitle.as_str());
     }
 
     // save notified IDs to file system

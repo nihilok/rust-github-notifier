@@ -3,7 +3,7 @@ use std::fs::File;
 use std::path::Path;
 
 use command_line::execute_command;
-use notify::{notify, NotificationParamsBuilder};
+use notify::NotificationBuilder;
 
 const LAUNCH_AGENT_PLIST_PATH: &str = "$HOME/Library/LaunchAgents/com.gh-notifier.plist";
 
@@ -74,21 +74,31 @@ pub fn get_persistence_file_path() -> String {
 }
 
 pub fn notify_error(error: &str) {
-    match NotificationParamsBuilder::default()
+    match NotificationBuilder::default()
         .title("Github Notifier")
         .subtitle("Error")
         .message(error)
         .sound("Pop")
         .build()
     {
-        Ok(n) => notify(&n),
+        Ok(n) => n.notify(),
         Err(err) => {
             dbg!(err);
         }
     }
 }
 
-pub fn notify_connection_error(detail: &str) {
-    let error_text: String = format!("Response: {}", detail);
-    notify_error(&error_text)
+pub fn display_new_github_notification(message: &str, onclick_url: &str, subtitle: &str) {
+    match NotificationBuilder::default()
+        .title("New Github Notification")
+        .subtitle(subtitle)
+        .message(message)
+        .open(onclick_url)
+        .build()
+    {
+        Ok(n) => n.notify(),
+        Err(err) => {
+            dbg!(err);
+        }
+    }
 }

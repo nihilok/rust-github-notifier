@@ -47,6 +47,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 [[package]]
 name = "command_line"
 version = "0.1.0"
+source = "git+https://github.com/nihilok/rust-command-line.git#8271150b2f42f65895d8a6f8ec6b3c2dab9820ad"
 
 [[package]]
 name = "core-foundation"
@@ -466,6 +467,7 @@ dependencies = [
 [[package]]
 name = "notify"
 version = "0.1.0"
+source = "git+https://github.com/nihilok/rust-notify.git#c4ed13a8668e372197b41a15e6ac7a0700d011ea"
 dependencies = [
  "command_line",
  "derive_builder",
