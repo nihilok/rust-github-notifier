@@ -80,5 +80,5 @@ ${YELLOW_FG}Use${DEFAULT}${BOLD} \`gh-notifier stop\` ${DEFAULT}${YELLOW_FG}to s
 echo -e "
 ${OUTPUT}"
 else
-  echo -e "${RED_BG}${BLACK_FG}ERROR:${DEFAULT} could not load launchd service"
+  echo -e "${ERROR}ERROR:${DEFAULT} could not load launchd service"
 fi
