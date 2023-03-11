@@ -6,6 +6,7 @@ RED_BG=$(tput setab 1)
 BLACK_FG=$(tput setaf 0)
 YELLOW_FG=$(tput setaf 3)
 GREEN_FG=$(tput setaf 2)
+ERROR="${RED_BG}${BLACK_FG}${BOLD}"
 
 BASE_PATH=$(pwd)
 DIST_PATH="$BASE_PATH/dist"
@@ -14,13 +15,13 @@ BINARY_PATH="$DIST_PATH/gh-notifier"
 # check working directory is script directory
 [ ! -d "$DIST_PATH" ] &&
 echo -e "
-${RED_BG}${BLACK_FG}ERROR:${DEFAULT} install.sh must be run from inside the source directory
+${ERROR}ERROR:${DEFAULT} install.sh must be run from inside the source directory
 " && exit 1
 
 # check for correct environment variable
 [ -z "$GH_NOTIFIER_TOKEN" ] &&
 echo -e "
-${RED_BG}${BLACK_FG}ERROR:${DEFAULT} GH_NOTIFIER_TOKEN environment variable not set
+${ERROR}ERROR:${DEFAULT} GH_NOTIFIER_TOKEN environment variable not set
 ${YELLOW_FG}hint:${DEFAULT} prefix the command with 'GH_NOTIFIER_TOKEN=<personal-access-token-with-notifications-scope>'
 " && exit 1
 
