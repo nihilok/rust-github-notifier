@@ -77,9 +77,8 @@ async fn main() -> Result<(), Error> {
     let ids_file_path = get_persistence_file_path();
     let read_ids_str = match fs::read_to_string(&ids_file_path) {
         Ok(ids) => ids,
-        _ => "".to_string(),
+        Err(_) => "".to_string(),
     };
-    let read_id_strs = read_ids_str.split(",").collect::<Vec<&str>>();
     let mut new_ids: Vec<String> = Vec::new();
 
     // loop through notifications in response, checking against saved notification ids
@@ -89,7 +88,7 @@ async fn main() -> Result<(), Error> {
         identifier.push_str(&notification.updated_at);
         let check = identifier.clone();
         new_ids.push(identifier);
-        if read_id_strs.contains(&check.as_str()) {
+        if read_ids_str.contains(&check.as_str()) {
             // have already notified about this notification
             continue;
         }
@@ -106,20 +105,15 @@ async fn main() -> Result<(), Error> {
 
     // save notified IDs to file system
     let ids_len = new_ids.len();
+
     if ids_len == 1 {
-        match fs::write(&ids_file_path, &new_ids[0]) {
-            Ok(_) => (),
-            Err(err) => {
-                dbg!(err);
-            }
+        if let Err(err) = fs::write(&ids_file_path, &new_ids[0]) {
+            dbg!(err);
         }
     } else if ids_len > 1 {
         let ids_to_write: String = new_ids.join(",");
-        match fs::write(&ids_file_path, ids_to_write) {
-            Ok(_) => (),
-            Err(err) => {
-                dbg!(err);
-            }
+        if let Err(err) = fs::write(&ids_file_path, ids_to_write) {
+            dbg!(err);
         }
     }
     Ok(())
