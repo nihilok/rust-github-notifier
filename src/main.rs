@@ -66,7 +66,7 @@ async fn main() -> Result<(), Error> {
         let text = response.text().await?;
         let error_text: String = format!("Response: {} {}", status, text);
         notify_error(&error_text);
-        dbg!("Error response: {} {}", status, text);
+        dbg!(error_text);
         process::exit(1);
     };
 
