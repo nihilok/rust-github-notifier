@@ -1,11 +1,16 @@
-use std::{env, fs, process};
+use std::{env, process};
 
 use reqwest::header::{ACCEPT, AUTHORIZATION, USER_AGENT};
 use reqwest::{Client, Error, StatusCode};
 use serde::Deserialize;
 
 pub mod util;
-use util::*;
+
+use crate::util::{get_local_ids, parse_args, save_local_ids};
+use util::{
+    build_pull_or_issue_url, display_new_github_notification, get_persistence_file_path,
+    notify_error,
+};
 
 const REQUEST_URL: &str = "https://api.github.com/notifications";
 const ENV_VAR_NAME: &str = "GH_NOTIFIER_TOKEN";
@@ -74,11 +79,8 @@ async fn main() -> Result<(), Error> {
     let response_json: Vec<Notification> = response.json().await?;
 
     // read/parse already notified ids from file
-    let ids_file_path = get_persistence_file_path();
-    let read_ids_str = match fs::read_to_string(&ids_file_path) {
-        Ok(ids) => ids,
-        Err(_) => "".to_string(),
-    };
+    let fs_path = get_persistence_file_path();
+    let read_ids_str = get_local_ids(&fs_path);
     let mut new_ids: Vec<String> = Vec::new();
 
     // loop through notifications in response, checking against saved notification ids
@@ -103,18 +105,6 @@ async fn main() -> Result<(), Error> {
         display_new_github_notification(message, onclick_url.as_str(), subtitle.as_str());
     }
 
-    // save notified IDs to file system
-    let ids_len = new_ids.len();
-
-    if ids_len == 1 {
-        if let Err(err) = fs::write(&ids_file_path, &new_ids[0]) {
-            dbg!(err);
-        }
-    } else if ids_len > 1 {
-        let ids_to_write: String = new_ids.join(",");
-        if let Err(err) = fs::write(&ids_file_path, ids_to_write) {
-            dbg!(err);
-        }
-    }
+    save_local_ids(new_ids, &fs_path);
     Ok(())
 }
