@@ -467,7 +467,7 @@ dependencies = [
 [[package]]
 name = "notify"
 version = "0.1.0"
-source = "git+https://github.com/nihilok/rust-notify.git#c4ed13a8668e372197b41a15e6ac7a0700d011ea"
+source = "git+https://github.com/nihilok/rust-notify.git#3e73260966cfd2cc67b5cae171ec2c2b2a8f131f"
 dependencies = [
  "command_line",
  "derive_builder",
