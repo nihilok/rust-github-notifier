@@ -1,7 +1,7 @@
 use std::{env, fs, process};
 
 use reqwest::header::{ACCEPT, AUTHORIZATION, USER_AGENT};
-use reqwest::{Client, Error};
+use reqwest::{Client, Error, StatusCode};
 use serde::Deserialize;
 
 pub mod util;
@@ -62,7 +62,7 @@ async fn main() -> Result<(), Error> {
 
     // handle unsuccessful responses
     let status = response.status();
-    if status != 200 {
+    if status != StatusCode::OK {
         let text = response.text().await?;
         let error_text: String = format!("Response: {} {}", status, text);
         notify_error(&error_text);
