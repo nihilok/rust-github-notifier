@@ -1,4 +1,3 @@
 /target
-.idea/
-/notify/target/
-/command_line/target/
+/.idea
+/dist
