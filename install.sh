@@ -24,6 +24,8 @@ if command -v cargo -h &>/dev/null; then
   mv target/release/gh-notifier "$DIST_PATH"
   chmod +x "$BINARY_PATH"
   COMPILED=true
+else
+  echo -e "${ERROR}ERROR:${DEFAULT} cargo must be installed to build rust binary https://doc.rust-lang.org/cargo/getting-started/installation.html"
 fi
 
 # create symbolic link on path
@@ -103,10 +105,10 @@ fi
 if command_; then
   OUTPUT="${GREEN_FG}${BOLD}gh-notifier${DEFAULT} is now running...
 
-${YELLOW_FG}Use${DEFAULT}${BOLD} \`gh-notifier stop\` ${DEFAULT}${YELLOW_FG}to stop the service${DEFAULT}"
+${YELLOW_FG}Use${DEFAULT}${BOLD} \`gh-notifier stop\` ${DEFAULT}${YELLOW_FG}to stop the service and ${DEFAULT}${BOLD}\`gh-notifier start\` ${DEFAULT}${YELLOW_FG}to restart it${DEFAULT}"
   [[ -n ${COMPILED} ]] && OUTPUT="\t${OUTPUT}"
-  echo -e "
-${OUTPUT}"
+  [[ -z ${COMPILED} ]] && OUTPUT="\n${SUCCESS}SUCCESS: ${DEFAULT}${OUTPUT}"
+  echo -e "${OUTPUT}"
 else
   echo -e "${ERROR}ERROR:${DEFAULT} could not load service"
 fi

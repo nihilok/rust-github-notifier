@@ -5,7 +5,9 @@ RED_BG=$(tput setab 1)
 BLACK_FG=$(tput setaf 0)
 YELLOW_FG=$(tput setaf 3)
 GREEN_FG=$(tput setaf 2)
+GREEN_BG=$(tput setab 2)
 ERROR="${RED_BG}${BLACK_FG}${BOLD}"
+SUCCESS="${GREEN_BG}${BLACK_FG}${BOLD}"
 
 BASE_PATH=$(pwd)
 DIST_PATH="$BASE_PATH/dist"
