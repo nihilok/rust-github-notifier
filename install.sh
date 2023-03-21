@@ -10,10 +10,11 @@ ERROR="${RED_BG}${BLACK_FG}${BOLD}"
 
 BASE_PATH=$(pwd)
 DIST_PATH="$BASE_PATH/dist"
+SCRIPT_PATH="$BASE_PATH/install.sh"
 BINARY_PATH="$DIST_PATH/gh-notifier"
 
 # check working directory is script directory
-[ ! -d "$DIST_PATH" ] &&
+[ ! -f "$SCRIPT_PATH" ] &&
   echo -e "
 ${ERROR}ERROR:${DEFAULT} install.sh must be run from inside the source directory
 " && exit 1
@@ -30,6 +31,7 @@ if command -v cargo -h &>/dev/null; then
   echo "Building latest binary"
   cargo build --release
   rm "$BINARY_PATH" &>/dev/null || true
+  mkdir -p "$DIST_PATH"
   mv target/release/gh-notifier "$DIST_PATH"
   chmod +x "$BINARY_PATH"
   COMPILED=true
@@ -91,7 +93,7 @@ ExecStart=$LOCAL_BIN/gh-notifier
 Environment=GH_NOTIFIER_TOKEN=$GH_NOTIFIER_TOKEN
 Environment=DISPLAY=:0
 Type=oneshot
-" >> gh-notifier.service && sudo mv gh-notifier.service /etc/systemd/user/
+" >>gh-notifier.service && sudo mv gh-notifier.service /etc/systemd/user/
 
   echo "[Unit]
 Description=Github Notifier
@@ -102,10 +104,10 @@ OnBootSec=30s
 
 [Install]
 WantedBy=timers.target
-" >> gh-notifier.timer && sudo mv gh-notifier.timer /etc/systemd/user/
+" >>gh-notifier.timer && sudo mv gh-notifier.timer /etc/systemd/user/
 
   command_() {
-    systemctl --user daemon-reload && systemctl --user start gh-notifier.timer && systemctl --user enable gh-notifier.timer ;
+    systemctl --user daemon-reload && systemctl --user start gh-notifier.timer && systemctl --user enable gh-notifier.timer
   }
 fi
 
