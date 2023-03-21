@@ -1,9 +1,4 @@
-mod cli;
-mod errors;
-mod file_operations;
-mod notifier;
-mod request;
-mod token;
+use gh_notifier::*;
 
 #[tokio::main]
 async fn main() -> Result<(), errors::RuntimeErrors> {
@@ -13,11 +8,11 @@ async fn main() -> Result<(), errors::RuntimeErrors> {
     let gh_token = token::get_token()?;
     let notifications_json = match request::notifications_json(&gh_token).await {
         Ok(json) => json,
-        Err(e) => return Err(errors::default_handler(e)?),
+        Err(e) => return Err(errors::notify_and_return_error(e)?),
     };
     match notifier::notify_all(notifications_json) {
         Ok(()) => (),
-        Err(e) => return Err(errors::default_handler(e)?),
+        Err(e) => return Err(errors::notify_and_return_error(e)?),
     }
     Ok(())
 }

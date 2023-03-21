@@ -3,7 +3,6 @@ name = "gh-notifier"
 version = "0.4.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 command_line = { git = "https://github.com/nihilok/rust-command-line.git" }

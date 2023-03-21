@@ -46,7 +46,7 @@ impl From<notify::NotificationBuilderError> for RuntimeErrors {
     }
 }
 
-pub fn default_handler(err: RuntimeErrors) -> Result<RuntimeErrors, RuntimeErrors> {
+pub fn notify_and_return_error(err: RuntimeErrors) -> Result<RuntimeErrors, RuntimeErrors> {
     notifier::notify_error(&format!("{}", err))?;
     Ok(err)
 }
