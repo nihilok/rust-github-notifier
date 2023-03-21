@@ -1,17 +1,18 @@
 #!/bin/bash
 set -e
-source ./shared.sh
 
 # check working directory is script directory
-[ ! -f "$SCRIPT_PATH" ] &&
+[ ! -f "$(pwd)/install.sh" ] && [ ! -f "$(pwd)/shared.sh" ] &&
   echo -e "
-${ERROR}ERROR:${DEFAULT} install.sh must be run from inside the source directory
+install.sh must be run from inside the source directory
 " && exit 1
+
+source ./shared.sh
 
 # check for correct environment variable
 [ -z "$GH_NOTIFIER_TOKEN" ] &&
   echo -e "
-${ERROR}ERROR:${DEFAULT} GH_NOTIFIER_TOKEN environment variable not set
+${ERROR}ERROR${DEFAULT} GH_NOTIFIER_TOKEN environment variable not set
 ${YELLOW_FG}hint:${DEFAULT} prefix the command with 'GH_NOTIFIER_TOKEN=<personal-access-token-with-notifications-scope>'
 " && exit 1
 
@@ -25,7 +26,7 @@ if command -v cargo -h &>/dev/null; then
   chmod +x "$BINARY_PATH"
   COMPILED=true
 else
-  echo -e "${ERROR}ERROR:${DEFAULT} cargo must be installed to build rust binary https://doc.rust-lang.org/cargo/getting-started/installation.html" && exit 1
+  echo -e "${ERROR}ERROR${DEFAULT} cargo must be installed to build rust binary https://doc.rust-lang.org/cargo/getting-started/installation.html" && exit 1
 fi
 
 # create symbolic link on path
@@ -67,7 +68,7 @@ if [[ $OSTYPE == 'darwin'* ]]; then
 </plist>
 " >"${PLIST_PATH}"
   # start launchd service
-  command_() {
+  load_service() {
     launchctl load "${PLIST_PATH}"
   }
 else
@@ -97,18 +98,18 @@ OnBootSec=30s
 WantedBy=timers.target
 " >>gh-notifier.timer && sudo mv gh-notifier.timer /etc/systemd/user/
 
-  command_() {
+  load_service() {
     systemctl --user daemon-reload && systemctl --user start gh-notifier.timer && systemctl --user enable gh-notifier.timer
   }
 fi
 
-if command_; then
-  OUTPUT="${GREEN_FG}${BOLD}gh-notifier${DEFAULT} is now running...
+if load_service; then
+  OUTPUT="
+${SUCCESS}SUCCESS${DEFAULT} ${BOLD}gh-notifier${DEFAULT} is now running...
 
-${YELLOW_FG}Use${DEFAULT}${BOLD} \`gh-notifier stop\` ${DEFAULT}${YELLOW_FG}to stop the service and ${DEFAULT}${BOLD}\`gh-notifier start\` ${DEFAULT}${YELLOW_FG}to restart it${DEFAULT}"
-  [[ -n ${COMPILED} ]] && OUTPUT="\t${OUTPUT}"
-  [[ -z ${COMPILED} ]] && OUTPUT="\n${SUCCESS}SUCCESS: ${DEFAULT}${OUTPUT}"
+${YELLOW_FG}Use${DEFAULT}${BOLD} \`gh-notifier stop\` ${DEFAULT}${YELLOW_FG}to stop the service,
+and ${DEFAULT}${BOLD}\`gh-notifier start\` ${DEFAULT}${YELLOW_FG}to restart it.${DEFAULT}"
   echo -e "${OUTPUT}"
 else
-  echo -e "${ERROR}ERROR:${DEFAULT} could not load service"
+  echo -e "${ERROR}ERROR${DEFAULT} could not load service"
 fi
