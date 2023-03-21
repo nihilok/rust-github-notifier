@@ -16,7 +16,7 @@ impl fmt::Display for RuntimeErrors {
         match *self {
             RuntimeErrors::IO(ref err) => err.fmt(f),
             RuntimeErrors::Var(ref err) => err.fmt(f),
-            RuntimeErrors::Request(ref err) => write!(f, "Request Error: {:?}", err.status()),
+            RuntimeErrors::Request(ref err) => err.fmt(f),
             RuntimeErrors::Notification(ref err) => err.fmt(f),
         }
     }
