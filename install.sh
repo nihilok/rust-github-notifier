@@ -25,7 +25,7 @@ if command -v cargo -h &>/dev/null; then
   chmod +x "$BINARY_PATH"
   COMPILED=true
 else
-  echo -e "${ERROR}ERROR:${DEFAULT} cargo must be installed to build rust binary https://doc.rust-lang.org/cargo/getting-started/installation.html"
+  echo -e "${ERROR}ERROR:${DEFAULT} cargo must be installed to build rust binary https://doc.rust-lang.org/cargo/getting-started/installation.html" && exit 1
 fi
 
 # create symbolic link on path
