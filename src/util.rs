@@ -1,11 +1,32 @@
+use std::env;
 use std::fs::File;
 use std::path::Path;
-use std::{env, fs};
 
 use command_line::execute_command;
 use notify::NotificationBuilder;
 
 const LAUNCH_AGENT_PLIST_PATH: &str = "$HOME/Library/LaunchAgents/com.gh-notifier.plist";
+
+
+#[derive(Deserialize)]
+pub struct NotificationSubject {
+    title: String,
+    url: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct Notification {
+    id: String,
+    subject: NotificationSubject,
+    reason: String,
+    updated_at: String,
+}
+
+#[derive(Debug)]
+pub enum RuntimeError {
+    IOError(io::Error),
+    RequestError(reqwest::Error),
+}
 
 fn get_args() -> Vec<String> {
     env::args().collect()
@@ -81,7 +102,7 @@ pub fn notify_error(error: &str) {
         .sound("Pop")
         .build()
     {
-        Ok(n) => n.notify(),
+        Ok(n) => { n.notify(); },
         Err(err) => {
             dbg!(err);
         }
@@ -96,31 +117,10 @@ pub fn display_new_github_notification(message: &str, onclick_url: &str, subtitl
         .open(onclick_url)
         .build()
     {
-        Ok(n) => n.notify(),
+        Ok(n) => { n.notify(); },
         Err(err) => {
             dbg!(err);
         }
     }
 }
 
-pub fn get_local_ids(path: &str) -> String {
-    match fs::read_to_string(&path) {
-        Ok(ids) => ids,
-        Err(_) => "".to_string(),
-    }
-}
-
-pub fn save_local_ids(ids: Vec<String>, path: &str) {
-    // save notified IDs to file system
-    let ids_len = ids.len();
-    if ids_len == 1 {
-        if let Err(err) = fs::write(path, &ids[0]) {
-            dbg!(err);
-        }
-    } else if ids_len > 1 {
-        let ids_to_write: String = ids.join(",");
-        if let Err(err) = fs::write(path, ids_to_write) {
-            dbg!(err);
-        }
-    }
-}
