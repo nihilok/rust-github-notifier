@@ -98,6 +98,8 @@ OnBootSec=30s
 WantedBy=timers.target
 " >>gh-notifier.timer && sudo mv gh-notifier.timer /etc/systemd/user/
 
+  systemctl --user stop gh-notifier.timer &> /dev/null || true
+
   load_service() {
     systemctl --user daemon-reload && systemctl --user start gh-notifier.timer && systemctl --user enable gh-notifier.timer
   }

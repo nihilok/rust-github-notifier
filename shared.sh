@@ -13,3 +13,8 @@ BASE_PATH=$(pwd)
 DIST_PATH="$BASE_PATH/dist"
 SCRIPT_PATH="$BASE_PATH/install.sh"
 BINARY_PATH="$DIST_PATH/gh-notifier"
+
+sudo rm "$LOCAL_BIN/gh-notifier" 2>/dev/null || true
+sudo rm ~/Library/LaunchAgents/com.gh-notifier.plist 2>/dev/null || true
+sudo rm /etc/systemd/user/gh-notifier.service 2>/dev/null || true
+sudo rm /etc/systemd/user/gh-notifier.timer 2>/dev/null || true
